@@ -5,6 +5,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.http.Header;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -19,11 +20,18 @@ public class HttpHandler {
     HttpGet _httpGet=null;
     HttpPost _httpPost=null;
     RequestConfig _requestConfig=null;
-    public static String responseText=null;
+    String responseText=null;
+
+    public String getResponseText() {
+        return responseText;
+    }
+    public void setResponseText(String responseText) {
+        this.responseText = responseText;
+    }
 
     HashMap<String, String> _requestHeader=new HashMap<String, String>();
 
-    public void HttpHandler()
+    public HttpHandler()
     {
         _httpClient=HttpClients.createDefault();
         _requestConfig=RequestConfig.custom().setSocketTimeout(10*1000).setConnectTimeout(10*1000).setConnectionRequestTimeout(10*1000).build();
@@ -46,16 +54,21 @@ public class HttpHandler {
 
     //Get
     public void Send(String url) throws IOException {
+
+        int timeout=10000;
+
+
         BufferedReader bufferReader=null;
         _httpGet=new HttpGet(url);
+        _httpGet.setConfig(_requestConfig);
 
         for(String key : _requestHeader.keySet())
             _httpGet.addHeader(key, _requestHeader.get(key));
-
         CloseableHttpResponse response=_httpClient.execute(_httpGet);
 
         System.out.println(":::Get RESPONSE:::");
 
+        Header[] headers=response.getHeaders("Set-Cooke");
         if(response.getStatusLine().getStatusCode()==200)
         {
             bufferReader=new BufferedReader(new InputStreamReader((response.getEntity().getContent())));
