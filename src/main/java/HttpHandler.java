@@ -6,13 +6,20 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.http.Header;
+import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.ssl.SSLContexts;
+
+import javax.net.ssl.SSLContext;
 
 
 public class HttpHandler {
@@ -21,6 +28,9 @@ public class HttpHandler {
     HttpPost _httpPost=null;
     RequestConfig _requestConfig=null;
     String responseText=null;
+    CredentialsProvider _credsProvider=null;
+    SSLContext _sslContext=null;
+    SSLConnectionSocketFactory _sslsf=null;
 
     public String getResponseText() {
         return responseText;
@@ -31,9 +41,22 @@ public class HttpHandler {
 
     HashMap<String, String> _requestHeader=new HashMap<String, String>();
 
+    @SuppressWarnings("deprecation")
     public HttpHandler()
     {
-        _httpClient=HttpClients.createDefault();
+
+        _credsProvider=new BasicCredentialsProvider();
+        _sslContext= SSLContexts.createDefault();
+        _sslsf=new SSLConnectionSocketFactory(_sslContext,
+                new String[] {"TLSv1.2"},
+                null,
+                new NoopHostnameVerifier());
+
+        _httpClient=HttpClients
+                .custom()
+                .setDefaultCredentialsProvider(_credsProvider)
+                .setSSLSocketFactory(_sslsf)
+                .build();
         _requestConfig=RequestConfig.custom().setSocketTimeout(10*1000).setConnectTimeout(10*1000).setConnectionRequestTimeout(10*1000).build();
     }
     //Clean the Request If Reqeust header null then not execute
@@ -56,7 +79,6 @@ public class HttpHandler {
     public void Send(String url) throws IOException {
 
         int timeout=10000;
-
 
         BufferedReader bufferReader=null;
         _httpGet=new HttpGet(url);
@@ -92,16 +114,20 @@ public class HttpHandler {
     public void Send(String url, String postData) throws IOException {
         BufferedReader bufferReader=null;
         _httpPost=new HttpPost(url);
+        _httpPost.setConfig(_requestConfig);
 
         StringEntity entity=new StringEntity(postData);
         _httpPost.setEntity(entity);
 
         for(String key : _requestHeader.keySet())
-            _httpPost.addHeader(key, _requestHeader.get(key));
+            _httpPost.setHeader(key, _requestHeader.get(key));
 
         CloseableHttpResponse response = _httpClient.execute(_httpPost);
 
-        System.out.println(":::Get RESPONSE:::");
+        System.out.println(":::Post RESPONSE:::");
+
+
+
 
         if(response.getStatusLine().getStatusCode()==200)
         {
